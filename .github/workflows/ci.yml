@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/github-actions
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build e Testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore FIAPHackathon.slnx
+
+      - name: Compilar solucao
+        run: dotnet build FIAPHackathon.slnx --configuration Release --no-restore
+
+      - name: Executar testes
+        run: dotnet test FIAPHackathon.slnx --configuration Release --no-build
