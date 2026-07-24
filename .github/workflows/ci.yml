@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: Build e Testes
+    name: Build, Testes e Docker
     runs-on: ubuntu-latest
 
     steps:
@@ -32,3 +32,6 @@ jobs:
 
       - name: Executar testes
         run: dotnet test FIAPHackathon.slnx --configuration Release --no-build
+
+      - name: Gerar imagem Docker da API
+        run: docker build -f Hackathon.Api/Dockerfile -t fiap-hackathon-api:${{ github.sha }} .
