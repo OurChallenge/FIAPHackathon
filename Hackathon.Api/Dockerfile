@@ -3,6 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY ["Hackathon.Api/Hackathon.Api.csproj", "Hackathon.Api/"]
+COPY ["Hackathon.Application/Hackathon.Application.csproj", "Hackathon.Application/"]
+COPY ["Hackathon.Domain/Hackathon.Domain.csproj", "Hackathon.Domain/"]
+COPY ["Hackathon.Infrastructure/Hackathon.Infrastructure.csproj", "Hackathon.Infrastructure/"]
 
 RUN dotnet restore "Hackathon.Api/Hackathon.Api.csproj"
 

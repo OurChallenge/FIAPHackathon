@@ -7,5 +7,6 @@
   <Project Path="Hackathon.Application/Hackathon.Application.csproj" />
   <Project Path="Hackathon.Domain.Tests/Hackathon.Domain.Tests.csproj" />
   <Project Path="Hackathon.Domain/Hackathon.Domain.csproj" />
+  <Project Path="Hackathon.DonationWorker/Hackathon.DonationWorker.csproj" />
   <Project Path="Hackathon.Infrastructure/Hackathon.Infrastructure.csproj" />
 </Solution>
