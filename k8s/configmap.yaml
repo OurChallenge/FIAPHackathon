@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fiap-hackathon-config
+  namespace: fiap-hackathon
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  SeedDatabase: "false"
+  RabbitMq__HostName: "rabbitmq"
+  RabbitMq__Port: "5672"
+  RabbitMq__UserName: "guest"
+  RabbitMq__DonationQueueName: "donation-received"
+
+  Jwt__Issuer: "FIAPHackathon.Api"
+  Jwt__Audience: "FIAPHackathon.Client"
+  Jwt__ExpirationMinutes: "60"
+

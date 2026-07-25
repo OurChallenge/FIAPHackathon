@@ -49,8 +49,10 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Seed database when explicitly enabled.
+var seedDatabase = builder.Configuration.GetValue<bool>("SeedDatabase");
+
+if (seedDatabase)
 {
     using var scope = app.Services.CreateScope();
 
