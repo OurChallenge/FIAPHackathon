@@ -61,3 +61,11 @@ jobs:
         run: |
           docker push \
             acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }}
+
+      # Atualiza o Container App para usar a imagem recém-publicada
+      - name: Atualizar Container App
+        run: |
+          az containerapp update \
+            --name fiap-hackathon-api-dev \
+            --resource-group FIAPHackathon \
+            --image acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }}
