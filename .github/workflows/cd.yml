@@ -1,8 +1,14 @@
 # Nome do workflow
 name: CD
 
-# Execução manual pelo GitHub
+# Execução
 on:
+  # Automatica via push
+  push:
+    branches:
+      - dev
+
+  # manual pelo GitHub
   workflow_dispatch:
 
 # Permissões necessárias para autenticação OIDC
