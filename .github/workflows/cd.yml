@@ -3,6 +3,10 @@ name: CD
 
 # Permite executar o workflow manualmente pela interface do GitHub
 on:
+  push:
+    branches:
+      - dev
+
   workflow_dispatch:
 
 # Permissões necessárias para autenticação no Azure usando OIDC
@@ -40,3 +44,5 @@ jobs:
 
           # ID da assinatura Azure onde estão os recursos
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Login no Azure Container Registry
+        run: az acr login --name acrFiapHackathon
