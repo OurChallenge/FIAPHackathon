@@ -1,11 +1,12 @@
-using System.Text;
 using Hackathon.Application;
 using Hackathon.Infrastructure;
+using Hackathon.Infrastructure.Persistence;
+using Hackathon.Infrastructure.Persistence.Seed;
 using Hackathon.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Hackathon.Infrastructure.Persistence;
-using Hackathon.Infrastructure.Persistence.Seed;
+using Prometheus;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -67,7 +68,10 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseHttpMetrics();
+
 app.MapHealthChecks("/health");
+app.MapMetrics();
 app.MapControllers();
 
 
