@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hackathon-api
+  namespace: fiap-hackathon
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: hackathon-api
+
+  template:
+    metadata:
+      labels:
+        app: hackathon-api
+
+    spec:
+      containers:
+        - name: hackathon-api
+          image: fiap-hackathon-api:local
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: fiap-hackathon-config
+
+            - secretRef:
+                name: fiap-hackathon-secret

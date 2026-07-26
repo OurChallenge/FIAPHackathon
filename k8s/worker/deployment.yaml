@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-worker
+  namespace: fiap-hackathon
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: donation-worker
+
+  template:
+    metadata:
+      labels:
+        app: donation-worker
+
+    spec:
+      containers:
+        - name: donation-worker
+          image: fiap-hackathon-donation-worker:local
+          imagePullPolicy: Never
+
+          envFrom:
+            - configMapRef:
+                name: fiap-hackathon-config
+
+            - secretRef:
+                name: fiap-hackathon-secret
