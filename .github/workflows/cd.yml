@@ -1,48 +1,63 @@
-# Nome do workflow exibido na aba Actions do GitHub
+# Nome do workflow
 name: CD
 
-# Permite executar o workflow manualmente pela interface do GitHub
+# Execução
 on:
+  # Automatica via push
   push:
     branches:
+      - main
+      - dev
+      
+  # Automatica via pr
+  pull_request:
+    branches:
+      - main
       - dev
 
+  # manual pelo GitHub
   workflow_dispatch:
 
-# Permissões necessárias para autenticação no Azure usando OIDC
+# Permissões necessárias para autenticação OIDC
 permissions:
-  # Permite que o workflow leia o conteúdo do repositório
   contents: read
-
-  # Permite gerar o token OIDC usado na autenticação com o Azure
   id-token: write
 
 jobs:
   deploy:
-    # Runner onde o job será executado
+    # Runner Linux
     runs-on: ubuntu-latest
 
-    # GitHub Environment usado pelo deploy
-    # Deve existir em Settings > Environments
+    # Environment configurado no GitHub
     environment: dev
 
     steps:
-      # Baixa o código do repositório para o runner
+      # Baixa o código do repositório
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Autentica o GitHub Actions no Azure usando OIDC
-      # Não é necessário armazenar senha ou client secret
+      # Login no Azure usando OIDC
       - name: Login no Azure
         uses: azure/login@v2
         with:
-          # ID do aplicativo criado no Microsoft Entra ID
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
-
-          # ID do tenant/diretório do Microsoft Entra
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-
-          # ID da assinatura Azure onde estão os recursos
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Login no Azure Container Registry
+
+      # Autentica o runner no Azure Container Registry
+      - name: Login no ACR
         run: az acr login --name acrFiapHackathon
+
+      # Gera a imagem Docker da API
+      - name: Build da imagem Docker
+        run: |
+          docker build \
+            -f Hackathon.Api/Dockerfile \
+            -t acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }} \
+            .
+
+      # Publica a imagem no ACR
+      - name: Push da imagem para o ACR
+        run: |
+          docker push \
+            acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }}
