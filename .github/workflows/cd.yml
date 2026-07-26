@@ -1,24 +1,42 @@
+# Nome do workflow exibido na aba Actions do GitHub
 name: CD
 
+# Permite executar o workflow manualmente pela interface do GitHub
 on:
   workflow_dispatch:
 
+# Permissões necessárias para autenticação no Azure usando OIDC
 permissions:
+  # Permite que o workflow leia o conteúdo do repositório
   contents: read
+
+  # Permite gerar o token OIDC usado na autenticação com o Azure
   id-token: write
 
 jobs:
   deploy:
+    # Runner onde o job será executado
     runs-on: ubuntu-latest
+
+    # GitHub Environment usado pelo deploy
+    # Deve existir em Settings > Environments
     environment: dev
 
     steps:
+      # Baixa o código do repositório para o runner
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Autentica o GitHub Actions no Azure usando OIDC
+      # Não é necessário armazenar senha ou client secret
       - name: Login no Azure
         uses: azure/login@v2
         with:
+          # ID do aplicativo criado no Microsoft Entra ID
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
+          # ID do tenant/diretório do Microsoft Entra
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+          # ID da assinatura Azure onde estão os recursos
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
