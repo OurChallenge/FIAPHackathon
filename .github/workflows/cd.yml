@@ -1,57 +1,42 @@
+# Nome do workflow exibido na aba Actions do GitHub
 name: CD
 
+# Permite executar o workflow manualmente pela interface do GitHub
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+# Permissões necessárias para autenticação no Azure usando OIDC
+permissions:
+  # Permite que o workflow leia o conteúdo do repositório
+  contents: read
+
+  # Permite gerar o token OIDC usado na autenticação com o Azure
+  id-token: write
 
 jobs:
-  build-and-push:
-    name: Build e Publicar imagem Docker
+  deploy:
+    # Runner onde o job será executado
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+
+    # GitHub Environment usado pelo deploy
+    # Deve existir em Settings > Environments
+    environment: dev
 
     steps:
-      - name: Checkout do codigo
+      # Baixa o código do repositório para o runner
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
+      # Autentica o GitHub Actions no Azure usando OIDC
+      # Não é necessário armazenar senha ou client secret
+      - name: Login no Azure
+        uses: azure/login@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # ID do aplicativo criado no Microsoft Entra ID
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
 
-      - name: Extrair metadados da imagem
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,format=long
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
+          # ID do tenant/diretório do Microsoft Entra
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
 
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build e push da imagem Docker da API
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Hackathon.Api/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # ID da assinatura Azure onde estão os recursos
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
