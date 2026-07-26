@@ -35,8 +35,6 @@ jobs:
       # Não é necessário armazenar senha ou client secret
       - name: Login no Azure
         uses: azure/login@v2
-      - name: Login no Azure Container Registry
-        run: az acr login --name acrFiapHackathon
         with:
           # ID do aplicativo criado no Microsoft Entra ID
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -46,3 +44,5 @@ jobs:
 
           # ID da assinatura Azure onde estão os recursos
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Login no Azure Container Registry
+        run: az acr login --name acrFiapHackathon
