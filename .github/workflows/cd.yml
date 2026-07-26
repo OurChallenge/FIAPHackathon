@@ -3,6 +3,10 @@ name: CD
 
 # Permite executar o workflow manualmente pela interface do GitHub
 on:
+  push:
+    branches:
+      - dev
+
   workflow_dispatch:
 
 # Permissões necessárias para autenticação no Azure usando OIDC
@@ -31,6 +35,8 @@ jobs:
       # Não é necessário armazenar senha ou client secret
       - name: Login no Azure
         uses: azure/login@v2
+      - name: Login no Azure Container Registry
+        run: az acr login --name acrFiapHackathon
         with:
           # ID do aplicativo criado no Microsoft Entra ID
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
