@@ -20,7 +20,7 @@ jobs:
 
     # GitHub Environment usado pelo deploy
     # Deve existir em Settings > Environments
-    environment: dev
+    environment: DEV
 
     steps:
       # Baixa o código do repositório para o runner
