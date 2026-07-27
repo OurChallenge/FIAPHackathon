@@ -1,9 +1,7 @@
-# Nome do workflow
 name: CD
 
-# Execução
 on:
-  # automatico após a conclusão do workflow CI pelo GitHub
+  # Executa após a conclusão do CI
   workflow_run:
     workflows:
       - CI
@@ -13,7 +11,7 @@ on:
       - main
       - dev
 
-  # manual pelo GitHub
+  # Permite execução manual
   workflow_dispatch:
 
 # Permissões necessárias para autenticação OIDC
@@ -23,18 +21,28 @@ permissions:
 
 jobs:
   deploy:
-    # Runner Linux
+    # Executa manualmente OU após CI concluído com sucesso
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
     runs-on: ubuntu-latest
 
-    # Environment configurado no GitHub
+    # Environment do GitHub
     environment: dev
 
+    # SHA que será utilizado nas imagens
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
     steps:
-      # Baixa o código do repositório
+      # Baixa exatamente o código que será implantado
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
-      # Login no Azure usando OIDC
+      # Autentica no Azure utilizando OIDC
       - name: Login no Azure
         uses: azure/login@v2
         with:
@@ -42,28 +50,42 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Autentica o runner no Azure Container Registry
+      # Autentica no Azure Container Registry
       - name: Login no ACR
         run: az acr login --name acrFiapHackathon
 
       # Gera a imagem Docker da API
-      - name: Build da imagem Docker
+      - name: Build da imagem Docker da API
         run: |
           docker build \
             -f Hackathon.Api/Dockerfile \
-            -t acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }} \
+            -t acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ env.DEPLOY_SHA }} \
             .
 
-      # Publica a imagem no ACR
-      - name: Push da imagem para o ACR
+      # Publica a imagem da API
+      - name: Push da imagem da API
         run: |
           docker push \
-            acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }}
+            acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ env.DEPLOY_SHA }}
 
-      # Atualiza o Container App para usar a imagem recém-publicada
-      - name: Atualizar Container App
+      # Gera a imagem Docker do Donation Worker
+      - name: Build da imagem Docker do Donation Worker
+        run: |
+          docker build \
+            -f Hackathon.DonationWorker/Dockerfile \
+            -t acrfiaphackathon.azurecr.io/fiap-hackathon-donation-worker:${{ env.DEPLOY_SHA }} \
+            .
+
+      # Publica a imagem do Donation Worker
+      - name: Push da imagem do Donation Worker
+        run: |
+          docker push \
+            acrfiaphackathon.azurecr.io/fiap-hackathon-donation-worker:${{ env.DEPLOY_SHA }}
+
+      # Atualiza a API no Azure Container Apps
+      - name: Atualizar Container App da API
         run: |
           az containerapp update \
             --name fiap-hackathon-api-dev \
             --resource-group FIAPHackathon \
-            --image acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }}
+            --image acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ env.DEPLOY_SHA }}
