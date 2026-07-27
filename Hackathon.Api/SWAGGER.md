@@ -1,6 +1,8 @@
 # Swagger - Documentação da API
 
-A API do Hackathon agora possui documentação interativa via Swagger/OpenAPI.
+A API do Hackathon possui documentação interativa via Swagger/OpenAPI com **suporte completo a autenticação JWT Bearer**.
+
+✅ **Bearer Token configurado** - O botão "Authorize" 🔓 está ativo no Swagger UI
 
 ## Como Acessar
 
@@ -29,15 +31,18 @@ https://localhost:7001/
 - Preencha os parâmetros necessários
 - Clique em "Execute" para fazer a requisição
 
-### 3. **Autenticação JWT**
+### 3. **Autenticação JWT** 🔐
+
+✅ **O botão "Authorize" está configurado e pronto para uso!**
+
 Para testar endpoints protegidos:
 
 1. Primeiro, faça login através do endpoint `/api/auth/login`
 2. Copie o token JWT retornado
-3. Clique no botão "Authorize" no topo da página
+3. **Clique no botão "Authorize" 🔓** no topo da página Swagger
 4. Cole o token no formato: `Bearer {seu-token-aqui}`
-5. Clique em "Authorize"
-6. Agora você pode testar os endpoints protegidos
+5. Clique em "Authorize" e depois em "Close"
+6. Agora você pode testar os endpoints protegidos - todos incluirão automaticamente o header Authorization
 
 ### Exemplo de uso:
 
@@ -109,6 +114,5 @@ public async Task<IActionResult> Register([FromBody] RegisterDonorRequest reques
 
 ## Pacotes Instalados
 
-- `Swashbuckle.AspNetCore` v10.2.3
-- `Microsoft.AspNetCore.OpenApi` v10.0.8
-- `Microsoft.OpenApi` v2.7.5
+- `Swashbuckle.AspNetCore` v6.9.0
+- `Microsoft.OpenApi` v2.0.0 (via Swashbuckle dependency)
