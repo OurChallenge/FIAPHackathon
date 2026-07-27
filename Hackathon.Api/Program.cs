@@ -43,10 +43,14 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-// Add services to the container.
 
+// Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Configure Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -62,6 +66,14 @@ if (seedDatabase)
 
     await DatabaseSeeder.SeedAsync(dbContext);
 }
+
+// Configure the HTTP request pipeline.
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Hackathon API v1");
+    options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root (http://localhost:port/)
+});
 
 app.UseHttpsRedirection();
 
