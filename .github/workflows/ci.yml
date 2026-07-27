@@ -38,5 +38,6 @@ jobs:
 
       - name: Gerar imagem Docker da API
         run: docker build -f Hackathon.Api/Dockerfile -t fiap-hackathon-api:${{ github.sha }} .
+
       - name: Gerar imagem Docker do Donation Worker
         run: docker build -f Hackathon.DonationWorker/Dockerfile -t fiap-hackathon-donation-worker:${{ github.sha }} .
