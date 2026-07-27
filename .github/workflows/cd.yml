@@ -6,13 +6,6 @@ on:
   # Automatica via push
   push:
     branches:
-      - main
-      - dev
-      
-  # Automatica via pr
-  pull_request:
-    branches:
-      - main
       - dev
 
   # manual pelo GitHub
