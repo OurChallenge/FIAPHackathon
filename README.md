@@ -678,16 +678,344 @@ A API publica a mensagem e o `DonationWorker` realiza o consumo de forma assínc
 
 # Fluxo básico de validação
 
-Com o ambiente em execução, o fluxo principal pode ser validado na seguinte ordem:
+Com o ambiente em execução, o fluxo principal pode ser validado pela API utilizando Swagger ou outra ferramenta de requisições HTTP.
 
-1. Login do gestor
-2. Criação de uma campanha
-3. Cadastro de um doador
-4. Login do doador
-5. Registro de uma doação
-6. Processamento da mensagem pelo Donation Worker
-7. Consulta das campanhas ativas
-8. Validação do valor arrecadado após o processamento
+Para acessar a API localmente:
+
+```bash
+kubectl port-forward service/hackathon-api 8080:8080 -n fiap-hackathon
+```
+
+A aplicação ficará disponível em:
+
+```text
+http://localhost:8080
+```
+
+---
+
+## 1. Login do GestorONG
+
+O usuário gestor é criado pelo `DatabaseSeeder`.
+
+Credenciais locais:
+
+```text
+E-mail: gestor@fiaphackathon.com
+Senha: Gestor@123
+Role: GestorONG
+```
+
+Endpoint:
+
+```http
+POST /api/auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "gestor@fiaphackathon.com",
+  "password": "Gestor@123"
+}
+```
+
+Em caso de sucesso, a resposta contém:
+
+```text
+userId
+fullName
+email
+role
+token
+```
+
+Copie o valor do campo:
+
+```text
+token
+```
+
+Esse token será utilizado para acessar os endpoints protegidos do gestor.
+
+No Swagger, clique em `Authorize` e informe:
+
+```text
+Bearer SEU_TOKEN
+```
+
+---
+
+## 2. Criar uma campanha
+
+Com o token do `GestorONG` configurado, execute:
+
+```http
+POST /api/campaigns
+```
+
+Exemplo:
+
+```json
+{
+  "title": "Campanha Solidária",
+  "description": "Campanha utilizada para validação do fluxo de doações.",
+  "startDate": "2026-01-01T00:00:00Z",
+  "endDate": "2030-12-31T23:59:59Z",
+  "financialGoal": 10000
+}
+```
+
+Em caso de sucesso, a API retorna `201 Created` e o identificador da campanha criada.
+
+Guarde o valor do campo:
+
+```text
+id
+```
+
+Ele será utilizado posteriormente no registro da doação.
+
+---
+
+## 3. Consultar as campanhas ativas
+
+Antes de realizar a doação, consulte:
+
+```http
+GET /api/campaigns/active
+```
+
+Esse endpoint é público e não exige autenticação.
+
+A resposta apresenta:
+
+```text
+id
+title
+financialGoal
+totalRaised
+```
+
+Localize a campanha criada anteriormente.
+
+Antes da primeira doação, o valor esperado de:
+
+```text
+totalRaised
+```
+
+é:
+
+```text
+0
+```
+
+---
+
+## 4. Registrar um doador
+
+O cadastro de doadores é público.
+
+Endpoint:
+
+```http
+POST /api/auth/register
+```
+
+Exemplo:
+
+```json
+{
+  "fullName": "Doador Teste",
+  "email": "doador.teste@fiaphackathon.com",
+  "cpf": "52998224725",
+  "password": "Doador@123"
+}
+```
+
+> O CPF deve possuir formato válido e não deve estar previamente cadastrado.
+
+Em caso de sucesso, a API retorna:
+
+```text
+201 Created
+```
+
+Se o e-mail ou CPF já estiver cadastrado, utilize outros dados para realizar um novo teste.
+
+---
+
+## 5. Login do doador
+
+Execute:
+
+```http
+POST /api/auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "doador.teste@fiaphackathon.com",
+  "password": "Doador@123"
+}
+```
+
+Copie o campo:
+
+```text
+token
+```
+
+da resposta.
+
+No Swagger, substitua o token anterior pelo token do usuário com role:
+
+```text
+Doador
+```
+
+---
+
+## 6. Registrar uma doação
+
+Com o token do doador configurado, execute:
+
+```http
+POST /api/donations
+```
+
+Utilize o `id` da campanha criada anteriormente:
+
+```json
+{
+  "campaignId": "ID_DA_CAMPANHA",
+  "amount": 100
+}
+```
+
+Exemplo:
+
+```json
+{
+  "campaignId": "00000000-0000-0000-0000-000000000000",
+  "amount": 100
+}
+```
+
+> Substitua o valor de `campaignId` pelo identificador real retornado na criação ou consulta da campanha.
+
+A resposta esperada é:
+
+```text
+202 Accepted
+```
+
+O retorno `202 Accepted` indica que a solicitação foi recebida e encaminhada para processamento assíncrono.
+
+---
+
+## 7. Acompanhar o Donation Worker
+
+A API publica a mensagem da doação no RabbitMQ.
+
+Para acompanhar o processamento realizado pelo Worker:
+
+```bash
+kubectl logs -f deployment/donation-worker -n fiap-hackathon
+```
+
+O `DonationWorker` consome a mensagem e realiza o processamento assíncrono da doação.
+
+---
+
+## 8. Validar o processamento
+
+Após o Worker processar a mensagem, consulte novamente:
+
+```http
+GET /api/campaigns/active
+```
+
+Localize a campanha utilizada na doação.
+
+O campo:
+
+```text
+totalRaised
+```
+
+deve refletir o valor processado.
+
+Para uma única doação de `100`, por exemplo:
+
+```text
+financialGoal: 10000
+totalRaised: 100
+```
+
+Isso confirma o fluxo:
+
+```text
+Cliente
+   ↓
+Hackathon.Api
+   ↓
+RabbitMQ
+   ↓
+DonationWorker
+   ↓
+SQL Server
+```
+
+---
+
+## 9. Validar o RabbitMQ
+
+Para acessar a interface administrativa:
+
+```bash
+kubectl port-forward service/rabbitmq 15672:15672 -n fiap-hackathon
+```
+
+Abra:
+
+```text
+http://localhost:15672
+```
+
+Credenciais locais:
+
+```text
+Usuário: guest
+Senha: guest
+```
+
+As filas utilizadas pelo processamento de doações incluem:
+
+```text
+donation-received
+donation-received-retry
+donation-received-dlq
+```
+
+---
+
+## Resultado esperado
+
+Ao finalizar o fluxo, deve ser possível comprovar:
+
+- autenticação JWT do `GestorONG`;
+- criação de campanha protegida por role;
+- consulta pública das campanhas ativas;
+- cadastro e autenticação do `Doador`;
+- registro da doação retornando `202 Accepted`;
+- publicação e consumo da mensagem pelo RabbitMQ;
+- processamento pelo `DonationWorker`;
+- atualização de `totalRaised` após o processamento assíncrono.
 
 ---
 
