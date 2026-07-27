@@ -3,14 +3,12 @@ name: CD
 
 # Execução
 on:
-  # Automatica via push
-  push:
-    branches:
-      - main
-      - dev
-      
-  # Automatica via pr
-  pull_request:
+  # automatico após a conclusão do workflow CI pelo GitHub
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
     branches:
       - main
       - dev
@@ -53,14 +51,14 @@ jobs:
         run: |
           docker build \
             -f Hackathon.Api/Dockerfile \
-            -t acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }} \
+            -t acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }} \
             .
 
       # Publica a imagem no ACR
       - name: Push da imagem para o ACR
         run: |
           docker push \
-            acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }}
+            acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }}
 
       - name: Verificar assinatura e recursos
         run: |
@@ -73,4 +71,4 @@ jobs:
           az containerapp update \
             --name fiap-hackathon-api-dev \
             --resource-group FIAPHackathon \
-            --image acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.sha }}
+            --image acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }}
