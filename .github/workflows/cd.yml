@@ -60,11 +60,6 @@ jobs:
           docker push \
             acrfiaphackathon.azurecr.io/fiap-hackathon-api:${{ github.event.workflow_run.head_sha }}
 
-      - name: Verificar assinatura e recursos
-        run: |
-          az account show --output table
-          az containerapp list --resource-group FIAPHackathon --output table
-
       # Atualiza o Container App para usar a imagem recém-publicada
       - name: Atualizar Container App
         run: |
