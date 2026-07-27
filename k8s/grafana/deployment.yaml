@@ -19,17 +19,23 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:12.4
 
           ports:
             - containerPort: 3000
 
           env:
-            - name: GF_SECURITY_ADMIN_USER
-              value: admin
+          - name: GF_SECURITY_ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: fiap-hackathon-secret
+                key: Grafana__AdminUser
 
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              value: admin
+          - name: GF_SECURITY_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fiap-hackathon-secret
+                key: Grafana__AdminPassword
 
           volumeMounts:
             - name: datasource

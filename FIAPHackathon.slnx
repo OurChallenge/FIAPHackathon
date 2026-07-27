@@ -2,8 +2,9 @@
   <Folder Name="/Solution Items/">
     <File Path="Docs/HACKATHON NETT.pdf" />
   </Folder>
-  <Project Path="FIAPHackathon.Tests/Hackathon.Application.Tests.csproj" />
+  <Project Path="Hackathon.Api.IntegrationTests/Hackathon.Api.IntegrationTests.csproj" Id="c23dc531-eae2-4e58-926c-6bc8b228d62e" />
   <Project Path="Hackathon.Api/Hackathon.Api.csproj" />
+  <Project Path="Hackathon.Application.Tests/Hackathon.Application.Tests.csproj" />
   <Project Path="Hackathon.Application/Hackathon.Application.csproj" />
   <Project Path="Hackathon.Domain.Tests/Hackathon.Domain.Tests.csproj" />
   <Project Path="Hackathon.Domain/Hackathon.Domain.csproj" />
