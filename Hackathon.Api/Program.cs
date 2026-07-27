@@ -3,28 +3,40 @@ using Hackathon.Infrastructure;
 using Hackathon.Infrastructure.Persistence;
 using Hackathon.Infrastructure.Persistence.Seed;
 using Hackathon.Infrastructure.Security;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+
 using Prometheus;
+
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Controllers
 builder.Services.AddControllers();
+
+// Application / Infrastructure
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Health Checks
 builder.Services.AddHealthChecks();
 
+// JWT Settings
 var jwtSettings = builder.Configuration
     .GetSection(JwtSettings.SectionName)
     .Get<JwtSettings>()
     ?? throw new InvalidOperationException(
         "JWT configuration was not found.");
 
+// Authentication
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters =
+        options.TokenValidationParameters = 
             new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -42,42 +54,52 @@ builder.Services
             };
     });
 
+// Authorization
 builder.Services.AddAuthorization();
 
-// Configure Swagger/OpenAPI
+// Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header usando o esquema Bearer. Exemplo: \"Bearer {token}\"",
-        Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
-    });
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc(
+        "v1",
+        new OpenApiInfo
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+            Title = "Hackathon API",
+            Version = "v1",
+            Description = "API do FIAP Hackathon"
+        });
+
+    options.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
+        {
+            Description =
+                "Informe o token JWT usando o formato: Bearer {token}",
+
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT"
+        });
+
+    options.AddSecurityRequirement(document =>
+        new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference(
+                "Bearer",
+                document)] = []
+        });
 });
 
 var app = builder.Build();
 
-// Seed database when explicitly enabled.
-var seedDatabase = builder.Configuration.GetValue<bool>("SeedDatabase");
+// Database Seed
+var seedDatabase =
+    builder.Configuration.GetValue<bool>("SeedDatabase");
 
 if (seedDatabase)
 {
@@ -89,25 +111,37 @@ if (seedDatabase)
     await DatabaseSeeder.SeedAsync(dbContext);
 }
 
-// Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI(options =>
+// Swagger
+app.UseSwagger(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Hackathon API v1");
-    options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root (http://localhost:port/)
+    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
 });
 
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint(
+        "/swagger/v1/swagger.json",
+        "Hackathon API v1");
+
+    // Swagger UI na raiz
+    options.RoutePrefix = string.Empty;
+});
+
+// HTTPS
 app.UseHttpsRedirection();
 
+// Authentication / Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Prometheus
 app.UseHttpMetrics();
 
+// Endpoints
 app.MapHealthChecks("/health");
 app.MapMetrics();
 app.MapControllers();
 
-
 app.Run();
+
 public partial class Program { }
