@@ -1,11 +1,12 @@
-using System.Text;
-using System.Text.Json;
 using Hackathon.Application.Events;
 using Hackathon.Application.Interfaces.Repositories;
 using Hackathon.Infrastructure.Messaging;
+using Hackathon.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Text;
+using System.Text.Json;
 
 namespace Hackathon.DonationWorker;
 
@@ -45,12 +46,49 @@ public class Worker : BackgroundService
         _channel = await _connection.CreateChannelAsync(
             cancellationToken: stoppingToken);
 
+        // Dead Letter Queue: destino final das mensagens
+        // que não puderam ser processadas após as tentativas.
+        await _channel.QueueDeclareAsync(
+            queue: _settings.DonationDeadLetterQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: stoppingToken);
+
+        // Retry Queue:
+        // a mensagem permanece aqui por alguns segundos e,
+        // após o TTL, volta automaticamente para a fila principal.
+        var retryQueueArguments = new Dictionary<string, object?>
+        {
+            ["x-message-ttl"] = _settings.DonationRetryDelayMilliseconds,
+            ["x-dead-letter-exchange"] = string.Empty,
+            ["x-dead-letter-routing-key"] = _settings.DonationQueueName
+        };
+
+        await _channel.QueueDeclareAsync(
+            queue: _settings.DonationRetryQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: retryQueueArguments,
+            cancellationToken: stoppingToken);
+
+        // Fila principal.
+        // Mensagens rejeitadas definitivamente vão para a DLQ.
+        var mainQueueArguments = new Dictionary<string, object?>
+        {
+            ["x-dead-letter-exchange"] = string.Empty,
+            ["x-dead-letter-routing-key"] =
+                _settings.DonationDeadLetterQueueName
+        };
+
         await _channel.QueueDeclareAsync(
             queue: _settings.DonationQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: null,
+            arguments: mainQueueArguments,
             cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
@@ -79,15 +117,57 @@ public class Worker : BackgroundService
             }
             catch (Exception ex)
             {
+                var retryCount = GetRetryCount(args.BasicProperties.Headers);
+
                 _logger.LogError(
                     ex,
-                    "Error processing donation message.");
+                    "Error processing donation message. Retry {RetryCount}/{MaxRetries}.",
+                    retryCount,
+                    _settings.DonationMaxRetries);
 
-                await _channel.BasicNackAsync(
-                    deliveryTag: args.DeliveryTag,
-                    multiple: false,
-                    requeue: false,
-                    cancellationToken: stoppingToken);
+                if (retryCount < _settings.DonationMaxRetries)
+                {
+                    var properties = new BasicProperties(args.BasicProperties)
+                    {
+                        Persistent = true
+                    };
+
+                    properties.Headers ??=
+                        new Dictionary<string, object?>();
+
+                    properties.Headers["x-retry-count"] =
+                        retryCount + 1;
+
+                    await _channel.BasicPublishAsync(
+                        exchange: string.Empty,
+                        routingKey: _settings.DonationRetryQueueName,
+                        mandatory: false,
+                        basicProperties: properties,
+                        body: args.Body,
+                        cancellationToken: stoppingToken);
+
+                    await _channel.BasicAckAsync(
+                        deliveryTag: args.DeliveryTag,
+                        multiple: false,
+                        cancellationToken: stoppingToken);
+
+                    _logger.LogWarning(
+                        "Donation message sent to retry queue. Attempt {RetryCount}/{MaxRetries}.",
+                        retryCount + 1,
+                        _settings.DonationMaxRetries);
+                }
+                else
+                {
+
+                    await _channel.BasicNackAsync(
+                        deliveryTag: args.DeliveryTag,
+                        multiple: false,
+                        requeue: false,
+                        cancellationToken: stoppingToken);
+
+                    _logger.LogError(
+                        "Donation message exceeded retry limit and was sent to DLQ.");
+                }
             }
         };
 
@@ -120,6 +200,10 @@ public class Worker : BackgroundService
             scope.ServiceProvider
                 .GetRequiredService<ICampaignRepository>();
 
+        var dbContext =
+            scope.ServiceProvider
+                .GetRequiredService<HackathonDbContext>();
+
         var donation =
             await donationRepository.GetByIdAsync(
                 donationEvent.DonationId);
@@ -128,9 +212,8 @@ public class Worker : BackgroundService
             throw new KeyNotFoundException(
                 $"Donation {donationEvent.DonationId} not found.");
 
-        // Evita processar a mesma doação duas vezes.
-        if (donation.Status ==
-            Domain.Enums.DonationStatus.Processada)
+        // Idempotência: evita processar a mesma doação duas vezes.
+        if (donation.Status == Domain.Enums.DonationStatus.Processada)
         {
             _logger.LogWarning(
                 "Donation {DonationId} was already processed.",
@@ -151,14 +234,33 @@ public class Worker : BackgroundService
 
         donation.MarkAsProcessed();
 
-        await campaignRepository.UpdateAsync(campaign);
-
-        await donationRepository.UpdateAsync(donation);
+        // Campaign e Donation são rastreadas pelo mesmo DbContext.
+        // Um único SaveChanges persiste as duas alterações.
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Donation {DonationId} processed. Amount: {Amount}",
             donation.Id,
             donation.Amount);
+    }
+
+    private static int GetRetryCount(
+    IDictionary<string, object?>? headers)
+    {
+        if (headers is null ||
+            !headers.TryGetValue("x-retry-count", out var value) ||
+            value is null)
+        {
+            return 0;
+        }
+
+        return value switch
+        {
+            int intValue => intValue,
+            long longValue => checked((int)longValue),
+            byte byteValue => byteValue,
+            _ => 0
+        };
     }
 
     public override async Task StopAsync(

@@ -10,6 +10,10 @@ data:
   RabbitMq__Port: "5672"
   RabbitMq__UserName: "guest"
   RabbitMq__DonationQueueName: "donation-received"
+  RabbitMq__DonationDeadLetterQueueName: "donation-received-dlq"
+  RabbitMq__DonationRetryQueueName: "donation-received-retry"
+  RabbitMq__DonationRetryDelayMilliseconds: "5000"
+  RabbitMq__DonationMaxRetries: "2"
 
   Jwt__Issuer: "FIAPHackathon.Api"
   Jwt__Audience: "FIAPHackathon.Client"
