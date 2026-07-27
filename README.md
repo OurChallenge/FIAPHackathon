@@ -170,9 +170,9 @@ fiap-hackathon-donation-worker:local
 
 ---
 
-## 3. Configurar os Secrets
+### 3. Configurar os Secrets
 
-Credenciais não são versionadas no repositório.
+Credenciais reais não são versionadas no repositório.
 
 Utilize:
 
@@ -192,9 +192,41 @@ No Windows:
 copy k8s\secret.example.yaml k8s\secret.yaml
 ```
 
-Substitua os valores indicados por `CHANGE_ME` pelas credenciais utilizadas no ambiente local.
+Para execução no ambiente local de desenvolvimento, substitua os valores `CHANGE_ME` pelas seguintes credenciais de exemplo:
 
-O arquivo `k8s/secret.yaml` está incluído no `.gitignore` e não deve ser commitado.
+```yaml
+stringData:
+  SqlServer__SaPassword: "YourStrong!Passw0rd"
+
+  ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=FIAPHackathon;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
+
+  Jwt__Key: "FIAPHackathon-Development-Key-Change-In-Production-2026"
+
+  RabbitMq__Password: "guest"
+
+  Grafana__AdminUser: "admin"
+  Grafana__AdminPassword: "admin"
+
+  Zabbix__PostgresPassword: "admin"
+```
+
+Essas credenciais são destinadas exclusivamente à execução local do projeto e não devem ser utilizadas em ambientes de produção.
+
+No ambiente local:
+
+- SQL Server utiliza o usuário `sa` e a senha definida acima;
+- RabbitMQ utiliza `guest` / `guest`;
+- Grafana utiliza `admin` / `admin`;
+- PostgreSQL do Zabbix utiliza o banco `zabbix`, usuário `zabbix` e senha `admin`;
+- a chave JWT é utilizada apenas para geração e validação dos tokens no ambiente de desenvolvimento.
+
+O arquivo:
+
+```text
+k8s/secret.yaml
+```
+
+está incluído no `.gitignore` e não deve ser commitado.
 
 ---
 
@@ -526,7 +558,21 @@ kubectl get pvc -n fiap-hackathon
 
 ## Aplicando as migrations
 
-O SQL Server executado no Kubernetes não fica diretamente exposto para o host.
+O SQL Server executado no Kubernetes não fica diretamente exposto para o host. Para executar as migrations a partir da máquina local, é necessário criar um `port-forward` e utilizar a mesma senha definida no `k8s/secret.yaml`.
+
+Antes de continuar, confirme que o Pod do SQL Server está em execução:
+
+```bash
+kubectl get pods -n fiap-hackathon -l app=sqlserver
+```
+
+O status esperado é:
+
+```text
+Running
+```
+
+### 1. Criar o port-forward
 
 Abra um terminal e execute:
 
@@ -534,23 +580,46 @@ Abra um terminal e execute:
 kubectl port-forward service/sqlserver 1433:1433 -n fiap-hackathon
 ```
 
-Mantenha esse terminal aberto.
+O terminal deverá permanecer aberto.
 
-Em outro terminal, configure a connection string utilizada pelo Entity Framework.
+A saída esperada é semelhante a:
+
+```text
+Forwarding from 127.0.0.1:1433 -> 1433
+Forwarding from [::1]:1433 -> 1433
+```
+
+### 2. Configurar a connection string local
+
+Em outro terminal, configure a variável de ambiente utilizada pelo Entity Framework.
+
+Para o ambiente local descrito neste README, a senha do usuário `sa` é a mesma definida anteriormente no `k8s/secret.yaml`:
+
+```text
+YourStrong!Passw0rd
+```
 
 No Windows CMD:
 
 ```bat
-set ConnectionStrings__DefaultConnection=Server=127.0.0.1,1433;Database=FIAPHackathon;User Id=sa;Password=SUA_SENHA;TrustServerCertificate=True
+set ConnectionStrings__DefaultConnection=Server=127.0.0.1,1433;Database=FIAPHackathon;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True
 ```
 
-Em seguida:
+Opcionalmente, confirme o valor configurado:
+
+```bat
+echo %ConnectionStrings__DefaultConnection%
+```
+
+> Caso você tenha definido outra senha em `SqlServer__SaPassword` no `k8s/secret.yaml`, substitua `YourStrong!Passw0rd` pela mesma senha neste comando.
+
+### 3. Executar as migrations
+
+Com o `port-forward` ainda ativo, execute:
 
 ```bash
 dotnet ef database update --project Hackathon.Infrastructure/Hackathon.Infrastructure.csproj --startup-project Hackathon.Api/Hackathon.Api.csproj
 ```
-
-As migrations criam a estrutura necessária para a aplicação, incluindo as tabelas de usuários, campanhas e doações.
 
 ---
 
