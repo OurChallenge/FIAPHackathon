@@ -11,33 +11,33 @@ on:
       - main
       - dev
 
+  # Permite execução manual
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build, Testes e Docker
+    name: Build e Testes
     runs-on: ubuntu-latest
 
     steps:
+      # Baixa o código do repositório
       - name: Checkout do codigo
         uses: actions/checkout@v4
 
+      # Instala o SDK utilizado pela solução
       - name: Instalar .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
+      # Restaura os pacotes NuGet
       - name: Restaurar dependencias
         run: dotnet restore FIAPHackathon.slnx
 
+      # Compila toda a solução
       - name: Compilar solucao
         run: dotnet build FIAPHackathon.slnx --configuration Release --no-restore
 
+      # Executa os testes automatizados
       - name: Executar testes
         run: dotnet test FIAPHackathon.slnx --configuration Release --no-build
-
-      - name: Gerar imagem Docker da API
-        run: docker build -f Hackathon.Api/Dockerfile -t fiap-hackathon-api:${{ github.sha }} .
-
-      - name: Gerar imagem Docker do Donation Worker
-        run: docker build -f Hackathon.DonationWorker/Dockerfile -t fiap-hackathon-donation-worker:${{ github.sha }} .
