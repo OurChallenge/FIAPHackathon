@@ -1072,5 +1072,3 @@ Além deste README, a documentação da API está disponível em:
 ```text
 Hackathon.Api/SWAGGER.md
 ```
-
-O projeto também deve ser acompanhado dos demais artefatos de documentação exigidos para a entrega do Hackathon, incluindo o diagrama da arquitetura e a justificativa das tecnologias de persistência utilizadas.
